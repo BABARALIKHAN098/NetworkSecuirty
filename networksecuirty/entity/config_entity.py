@@ -1,0 +1,80 @@
+import os
+from datetime import datetime
+
+from networksecuirty.constant import training_pipeline
+
+
+class TrainingPipelineConfig:
+    """Holds the pipeline name and the timestamped artifact folder for one run."""
+
+    # BUG FIX: the original `def __init__(self.timestamp=datetime.now())` is a
+    # SyntaxError. A parameter cannot be `self.timestamp`. Also, a default of
+    # datetime.now() is evaluated once at import time, so every run would get
+    # the same timestamp. Using None and calling now() inside fixes both.
+    def __init__(self, timestamp=None):
+        if timestamp is None:
+            timestamp = datetime.now()
+
+        # BUG FIX: "%m-%D-%Y-%M-%S" was wrong. %D expands to "11/06/26" (with
+        # slashes, which would create nested folders), and %M is minutes where
+        # hours (%H) was intended. Fixed format: month-day-year-hour-min-sec.
+        timestamp = timestamp.strftime("%m_%d_%Y_%H_%M_%S")
+
+        self.pipeline_name = training_pipeline.PIPELINE_NAME
+        self.artifact_name = training_pipeline.ARTIFACT_DIR
+
+        # Each run gets its own folder: Artifacts/<timestamp>
+        self.artifact_dir = os.path.join(self.artifact_name, timestamp)
+
+        self.timestamp: str = timestamp
+
+
+class DataIngestionConfig:
+    """Holds all paths and settings needed by the data ingestion step."""
+
+    # BUG FIX: the original took `training_pipeline_` as a parameter, which
+    # shadowed the imported module and was never needed. The module is already
+    # imported at the top, so only the config object is passed in.
+    def __init__(self, training_pipeline_config: TrainingPipelineConfig):
+        # Folder for everything produced by data ingestion:
+        # Artifacts/<timestamp>/data_ingestion
+        # BUG FIX: the original used the class name `TrainingPipelineConfig`
+        # with a misspelled attribute (`artifacts_dir`). It must use the
+        # instance's `artifact_dir`. FILE_NAME was also removed from this path
+        # because a data file name does not belong in a directory path.
+        self.data_ingestion_dir: str = os.path.join(
+            training_pipeline_config.artifact_dir,
+            training_pipeline.DATA_INGESTION_DIR_NAME,
+        )
+
+        # Where the raw data exported from MongoDB is stored:
+        # .../data_ingestion/feature_store/<FILE_NAME>
+        # (the file name is added here, which is where it belongs)
+        self.feature_store_file_path: str = os.path.join(
+            self.data_ingestion_dir,
+            training_pipeline.DATA_INGESTION_FEATURE_STORE_DIR,
+            training_pipeline.FILE_NAME,
+        )
+
+        # Path of the training split: .../data_ingestion/ingested/train.csv
+        self.training_file_path: str = os.path.join(
+            self.data_ingestion_dir,
+            training_pipeline.DATA_INGESTION_INGESTED_DIR,
+            training_pipeline.TRAIN_FILE_NAME,
+        )
+
+        # Path of the testing split: .../data_ingestion/ingested/test.csv
+        self.testing_file_path: str = os.path.join(
+            self.data_ingestion_dir,
+            training_pipeline.DATA_INGESTION_INGESTED_DIR,
+            training_pipeline.TEST_FILE_NAME,
+        )
+
+        # Fraction of data used for the test set (0.2 = 20%)
+        self.train_test_split_ratio: float = (
+            training_pipeline.DATA_INGESTION_TRAIN_TEST_SPLIT_RATIO
+        )
+
+        # MongoDB collection and database the raw data is read from
+        self.collection_name: str = training_pipeline.DATA_INGESTION_COLLECTION_NAME
+        self.database_name: str = training_pipeline.DATA_INGESTION_DATABASE_NAME

@@ -3,4 +3,7 @@ pandas
 numpy 
 pymongo
 certifi
--e .
+pymongo
+scikit-learn
+python-dotenv
+#-e .

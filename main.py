@@ -3,6 +3,7 @@ from networksecuirty.components.data_ingestion import DataIngestion
 
 # Component that validates column count and checks data drift
 from networksecuirty.components.data_validation import DataValidation
+from networksecuirty.components.data_transformation import DataTransformation
 
 # Custom exception that adds file name and line number to errors
 from networksecuirty.exception.exception import NetworkSecurityException
@@ -14,7 +15,8 @@ from networksecuirty.logging.logger import logging
 from networksecuirty.entity.config_entity import (
     DataIngestionConfig,
     TrainingPipelineConfig,
-    DataValidationConfig
+    DataValidationConfig,
+    DataTransformationConfig,
 )
 
 import sys
@@ -54,6 +56,17 @@ if __name__ == "__main__":
         logging.info("Data validation completed")
 
         print(data_validation_artifact)
+
+
+        logging.info("data transformation started")
+
+        data_transformation_config = DataTransformationConfig(trainingpipelineconfig)
+        data_transformation = DataTransformation(
+            data_validation_artifact, data_transformation_config
+        )
+        data_transformation_artifact=data_transformation.initiate_data_transformation()
+
+        logging.info("data transformation completed")
 
     except Exception as e:
         # Wrap any error to include file and line details

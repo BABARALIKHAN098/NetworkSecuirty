@@ -78,3 +78,55 @@ class DataIngestionConfig:
         # MongoDB collection and database the raw data is read from
         self.collection_name: str = training_pipeline.DATA_INGESTION_COLLECTION_NAME
         self.database_name: str = training_pipeline.DATA_INGESTION_DATABASE_NAME
+
+
+
+class DataValidationConfig:
+    def __init__(self, training_pipeline_config: TrainingPipelineConfig):
+        self.data_validation_dir: str = os.path.join(
+            training_pipeline_config.artifact_dir,
+            training_pipeline.DATA_VALIDATION_DIR_NAME
+        )
+
+        # FIX 1: This used DATA_VALIDATION_INVALID_DIR, so the "valid" directory
+        # actually pointed to the "invalid" folder. It must use the VALID constant.
+        self.valid_data_dir: str = os.path.join(
+            self.data_validation_dir,
+            training_pipeline.DATA_VALIDATION_VALID_DIR
+        )
+
+        # FIX 2: This was built from self.valid_data_dir, which nested the invalid
+        # folder inside the valid folder (valid/invalid). Both folders should be
+        # siblings under data_validation_dir.
+        self.invalid_data_dir: str = os.path.join(
+            self.data_validation_dir,
+            training_pipeline.DATA_VALIDATION_INVALID_DIR
+        )
+
+        self.valid_train_file_path: str = os.path.join(
+            self.valid_data_dir, training_pipeline.TRAIN_FILE_NAME
+        )
+
+        self.valid_test_file_path: str = os.path.join(
+            self.valid_data_dir, training_pipeline.TEST_FILE_NAME
+        )
+
+        self.invalid_train_file_path: str = os.path.join(
+            self.invalid_data_dir, training_pipeline.TRAIN_FILE_NAME
+        )
+
+        # FIX 3: The invalid test file path was missing. The valid side has both
+        # train and test paths, so the invalid side needs both too, otherwise
+        # invalid test data has nowhere to be saved.
+        self.invalid_test_file_path: str = os.path.join(
+            self.invalid_data_dir, training_pipeline.TEST_FILE_NAME
+        )
+
+        # FIX 4: The old attribute was named "drift_report_dir" but included the
+        # report file name, so it was really a file path. Renamed to
+        # drift_report_file_path. If other code uses drift_report_dir, update it.
+        self.drift_report_file_path: str = os.path.join(
+            self.data_validation_dir,
+            training_pipeline.DATA_VALIDATION_DRIFT_REPORT_DIR,
+            training_pipeline.DATA_VALIDATION_DRIFT_REPORT_FILE_NAME
+        )

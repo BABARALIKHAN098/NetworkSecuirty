@@ -1,14 +1,12 @@
 import os
 import sys
-from typing import Optional
+import csv
+import random
+from typing import Dict, List
 
-import certifi
-import numpy as np
-import pandas as pd  # BUG FIX: was missing, so pd.DataFrame raised NameError
-import pymongo
 from dotenv import load_dotenv
-from sklearn.model_selection import train_test_split
 
+from networksecuirty.constant.training_pipeline import FILE_NAME
 from networksecuirty.entity.artifact_entity import DataIngestionArtifact
 from networksecuirty.entity.config_entity import DataIngestionConfig
 from networksecuirty.exception.exception import NetworkSecurityException
@@ -19,6 +17,7 @@ from networksecuirty.logging.logger import logging
 load_dotenv()
 
 MONGO_DB_URL = os.getenv("MONGO_DB_URL")
+LOCAL_DATA_FILE_PATH = os.path.join("Network_Data", FILE_NAME)
 
 
 class DataIngestion:
@@ -34,79 +33,73 @@ class DataIngestion:
         except Exception as e:
             raise NetworkSecurityException(e, sys)
 
-    def export_collection_as_dataframe(self) -> pd.DataFrame:
-        """Read the MongoDB collection and return it as a pandas DataFrame."""
+    def export_collection_as_dataframe(self) -> List[Dict[str, str]]:
+        """Read MongoDB when configured, otherwise use the bundled CSV dataset."""
         try:
             database_name = self.data_ingestion_config.database_name
-            # BUG FIX: the attribute is `collection_name`, not `collection`
             collection_name = self.data_ingestion_config.collection_name
 
-            # tlsCAFile=certifi.where() lets the TLS connection to Atlas verify
-            self.mongo_client = pymongo.MongoClient(
-                MONGO_DB_URL, tlsCAFile=certifi.where()
-            )
-            collection = self.mongo_client[database_name][collection_name]
+            if MONGO_DB_URL and MONGO_DB_URL.startswith(("mongodb://", "mongodb+srv://")):
+                import certifi
+                import pymongo
 
-            df = pd.DataFrame(list(collection.find()))
+                self.mongo_client = pymongo.MongoClient(
+                    MONGO_DB_URL, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=5000
+                )
+                collection = self.mongo_client[database_name][collection_name]
+                records = list(collection.find())
+                for record in records:
+                    record.pop("_id", None)
+                if records:
+                    return [{key: str(value) for key, value in record.items()} for record in records]
+                logging.warning("MongoDB collection is empty; using the local dataset")
 
-            # MongoDB adds an internal "_id" column that is not a feature
-            if "_id" in df.columns:
-                df = df.drop(columns=["_id"])
-
-            # BUG FIX: the original `{"na:", np.nan}` was a set, not a dict,
-            # and "na:" had a stray colon. Also, replace() and return were
-            # indented inside the `if`, so the function returned None
-            # whenever there was no "_id" column. Now they always run.
-            df = df.replace({"na": np.nan})
-
-            return df
+            logging.warning("MongoDB is not configured; using %s", LOCAL_DATA_FILE_PATH)
+            with open(LOCAL_DATA_FILE_PATH, newline="", encoding="utf-8") as file:
+                return list(csv.DictReader(file))
 
         except Exception as e:
-            # BUG FIX: the original raised the exception class without
-            # arguments, which would itself fail
+            if os.path.exists(LOCAL_DATA_FILE_PATH):
+                logging.warning("MongoDB read failed; using local dataset: %s", e)
+                with open(LOCAL_DATA_FILE_PATH, newline="", encoding="utf-8") as file:
+                    return list(csv.DictReader(file))
             raise NetworkSecurityException(e, sys)
 
-    def export_data_into_feature_store(self, dataframe: pd.DataFrame) -> pd.DataFrame:
-        """Save the raw DataFrame to the feature store CSV and return it."""
+    def export_data_into_feature_store(self, dataframe: List[Dict[str, str]]) -> List[Dict[str, str]]:
+        """Save the raw records to the feature store CSV and return them."""
         try:
-            # BUG FIX: typo `data_ingestion_config_config`
             feature_store_file_path = self.data_ingestion_config.feature_store_file_path
-
-            # Create the folder if it does not exist yet
             dir_path = os.path.dirname(feature_store_file_path)
             os.makedirs(dir_path, exist_ok=True)
-
-            dataframe.to_csv(feature_store_file_path, index=False, header=True)
-
+            with open(feature_store_file_path, "w", newline="", encoding="utf-8") as file:
+                writer = csv.DictWriter(file, fieldnames=list(dataframe[0]))
+                writer.writeheader()
+                writer.writerows(dataframe)
             return dataframe
 
         except Exception as e:
             raise NetworkSecurityException(e, sys)
 
-    def split_data_as_train_test(self, dataframe: pd.DataFrame) -> None:
-        """Split the DataFrame into train and test sets and save them as CSV."""
-        # BUG FIX: the original `try` had no `except`, which is a SyntaxError
+    def split_data_as_train_test(self, dataframe: List[Dict[str, str]]) -> None:
+        """Split records into train and test CSV files."""
         try:
-            train_set, test_set = train_test_split(
-                dataframe,
-                test_size=self.data_ingestion_config.train_test_split_ratio,
-                random_state=42,  # makes the split reproducible
-            )
+            shuffled_data = list(dataframe)
+            random.Random(42).shuffle(shuffled_data)
+            split_index = int(len(shuffled_data) * (1 - self.data_ingestion_config.train_test_split_ratio))
+            train_set = shuffled_data[:split_index]
+            test_set = shuffled_data[split_index:]
             logging.info("Performed train test split on the dataframe")
-
-            # Create the folder for the train/test files
             dir_path = os.path.dirname(self.data_ingestion_config.training_file_path)
             os.makedirs(dir_path, exist_ok=True)
-
-            logging.info("Exporting train and test files")
-
-            train_set.to_csv(
-                self.data_ingestion_config.training_file_path, index=False, header=True
-            )
-            test_set.to_csv(
-                self.data_ingestion_config.testing_file_path, index=False, header=True
-            )
-
+            fieldnames = list(dataframe[0])
+            for path, records in (
+                (self.data_ingestion_config.training_file_path, train_set),
+                (self.data_ingestion_config.testing_file_path, test_set),
+            ):
+                with open(path, "w", newline="", encoding="utf-8") as file:
+                    writer = csv.DictWriter(file, fieldnames=fieldnames)
+                    writer.writeheader()
+                    writer.writerows(records)
             logging.info("Exported train and test files")
 
         except Exception as e:

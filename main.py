@@ -1,6 +1,9 @@
 # Component that exports data from MongoDB and splits it into train/test
 from networksecuirty.components.data_ingestion import DataIngestion
 
+# Component that validates column count and checks data drift
+from networksecuirty.components.data_validation import DataValidation
+
 # Custom exception that adds file name and line number to errors
 from networksecuirty.exception.exception import NetworkSecurityException
 
@@ -11,6 +14,7 @@ from networksecuirty.logging.logger import logging
 from networksecuirty.entity.config_entity import (
     DataIngestionConfig,
     TrainingPipelineConfig,
+    DataValidationConfig
 )
 
 import sys
@@ -36,6 +40,21 @@ if __name__ == "__main__":
 
         print(dataingestionartifact)
 
+        # Data validation config built on the same pipeline config
+        data_validation_config = DataValidationConfig(trainingpipelineconfig)
+
+        # Create the data validation component using the ingestion output
+        data_validation = DataValidation(dataingestionartifact, data_validation_config)
+
+        logging.info("Initiate the data validation")
+
+        # Run validation; returns an artifact with the validation status and file paths
+        data_validation_artifact = data_validation.initiate_data_validation()
+
+        logging.info("Data validation completed")
+
+        print(data_validation_artifact)
+
     except Exception as e:
         # Wrap any error to include file and line details
-        raise NetworkSecurityException(e, sys)
+        raise NetworkSecurityException(e, sys) from e

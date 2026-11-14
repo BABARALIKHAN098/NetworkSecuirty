@@ -8,4 +8,6 @@ scikit-learn
 python-dotenv
 scipy
 pyyaml
+mlflow
+dagshub
 #-e .

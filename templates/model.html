@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Model Project | Network Security</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="navbar">
+    <a class="brand" href="/ui"><span class="brand-mark">N</span><span>Network<span>Security</span></span></a>
+    <nav>
+      <a href="/ui">Home</a>
+      <a class="active" href="/model">Model Project</a>
+    </nav>
+  </header>
+  <main class="page">
+    <section class="page-heading">
+      <div class="eyebrow"><span class="status-dot"></span> Model Project</div>
+      <h1>Check a website feature set</h1>
+      <p class="lede">Upload a CSV with the same feature columns as the training data, or enter one row manually.</p>
+      <div class="project-meta"><span><span class="check-mark">✓</span> 30 numeric signals</span><span><span class="check-mark">✓</span> Batch or single row</span><span><span class="check-mark">✓</span> Downloadable results</span></div>
+    </section>
+
+    <section class="panel">
+      <div class="tabs" role="tablist">
+        <button class="tab active" data-mode="upload" type="button"><span class="tab-number">01</span> Upload CSV</button>
+        <button class="tab" data-mode="manual" type="button"><span class="tab-number">02</span> Manual entry</button>
+      </div>
+      <div id="message" class="message" role="alert" hidden></div>
+
+      <form id="upload-form" class="mode-panel active">
+        <label class="file-drop" for="csv-file">
+          <span class="upload-icon">+</span>
+          <strong>Drop your CSV here or browse</strong>
+          <span id="file-name">CSV files only - Result column is optional</span>
+          <input id="csv-file" type="file" accept=".csv,text/csv">
+        </label>
+        <button class="button primary" type="submit">Predict CSV</button>
+      </form>
+
+      <form id="manual-form" class="mode-panel" hidden>
+        <p class="form-help">Every field accepts -1, 0, or 1, matching the dataset encoding.</p>
+        <div class="feature-grid">
+          {% for feature in features %}
+          <label class="field">
+            <span>{{ feature.name }}</span>
+            <input name="{{ feature.name }}" type="number" min="-1" max="1" step="1" required>
+            <small>{{ feature.hint }}</small>
+          </label>
+          {% endfor %}
+        </div>
+        <button class="button primary" type="submit">Predict website</button>
+      </form>
+    </section>
+
+    <section class="panel train-panel">
+      <div>
+        <h2>Update the model</h2>
+        <p>Run the existing training pipeline when you have refreshed training data.</p>
+      </div>
+      <button id="train-button" class="button secondary" type="button">Train model</button>
+    </section>
+
+    <section id="results" class="panel results-panel" hidden>
+      <div class="results-header">
+        <div>
+          <p class="eyebrow">Prediction results</p>
+          <h2>Website safety report</h2>
+        </div>
+        <a id="download-button" class="button secondary" href="/download-predictions">Download predictions CSV</a>
+      </div>
+      <div id="summary" class="summary"></div>
+      <div class="table-wrap">
+        <table id="results-table"></table>
+      </div>
+    </section>
+  </main>
+  <script src="/static/app.js"></script>
+</body>
+</html>

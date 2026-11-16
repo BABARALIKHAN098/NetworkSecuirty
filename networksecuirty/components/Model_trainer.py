@@ -42,11 +42,7 @@ class ModelTrainer:
             mlflow.log_metric("precision_score",precision_score)
             mlflow.log_metric("recall_score",recall_score)
 
-            mlflow.sklearn.log_model(
-                best_model,
-                "model",
-                skops_trusted_types=["sklearn.tree._tree.Tree"],
-            )
+            mlflow.log_artifact("final_model/model.pkl", "model")
     def train_model(self,x_train,y_train,x_test,y_test):
         from sklearn.linear_model import LogisticRegression
         from sklearn.neighbors import KNeighborsClassifier
@@ -95,6 +91,7 @@ class ModelTrainer:
         best_model_score=max(sorted(model_report.values()))
         best_model_name=list(model_report.keys())[list(model_report.values()).index(best_model_score)]
         best_model=models[best_model_name]
+        save_object("final_model/model.pkl",best_model)
         y_train_pred=best_model.predict(x_train)
         classification_train_metric=get_classification_score(y_true=y_train,y_pred=y_train_pred)
 

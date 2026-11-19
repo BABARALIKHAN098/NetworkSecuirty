@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from unicorn import run as app_run
 from networksecuirty.constant.training_pipeline import (
     DATA_INGESTION_COLLECTION_NAME,
     DATA_INGESTION_DATABASE_NAME,

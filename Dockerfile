@@ -1,6 +1,12 @@
-FROM Python:3.12-slim-buster
+FROM python:3.12-slim
+
 WORKDIR /app
+
+# Install dependencies first so Docker can cache this layer
+COPY ./app/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Then copy the rest of the app
 COPY ./app .
-RUN apt update -y && apt install -y build-awscli
-RUN apt-get update && pip install -r requirements.txt
+
 CMD ["python", "app.py"]

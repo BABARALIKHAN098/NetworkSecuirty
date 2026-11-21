@@ -1,0 +1,23 @@
+Metadata-Version: 2.4
+Name: NetworkSecurity
+Version: 0.0.1
+Author: Babar ali khan
+Author-email: babaralikhanaiexpert098@gmail.com
+Requires-Dist: python-dotenv
+Requires-Dist: pandas
+Requires-Dist: numpy
+Requires-Dist: pymongo
+Requires-Dist: certifi
+Requires-Dist: scikit-learn
+Requires-Dist: scipy
+Requires-Dist: pyyaml
+Requires-Dist: mlflow
+Requires-Dist: dagshub
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: jinja2
+Requires-Dist: python-multipart
+Requires-Dist: seaborn
+Dynamic: author
+Dynamic: author-email
+Dynamic: requires-dist
